@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/binary"
+	"io"
 	"net"
 	"sync"
 	"time"
@@ -16,40 +17,6 @@ const bufSize = 2 << 15
 // hdrLength is the length of our own crafted header
 // This header contains the length of a UDP packet
 const hdrLength = 2
-
-// writeUDPChunks writes UDP packets from buffer to the connection
-// As our packets are prefixed with a 2 byte UDP size header,
-// we loop through the buffer up until nothing is left to write or up until we find a non-complete packet
-func writeUDPChunks(conn *net.UDPConn, buf []byte, wgaddr *net.UDPAddr) int {
-	idx := 0
-	for {
-		// get the header length index
-		hdre := idx + hdrLength
-		if len(buf) < hdre {
-			return idx
-		}
-		hdr := buf[idx:hdre]
-		// get the lenth of the datagram from the header we made
-		n := binary.BigEndian.Uint16(hdr)
-
-		// the datagram ends after the header + size
-		dge := hdre + int(n)
-		if len(buf) < dge {
-			return idx
-		}
-		datagram := buf[hdre:dge]
-		var err error
-		if wgaddr != nil {
-			_, err = conn.WriteTo(datagram, wgaddr)
-		} else {
-			_, err = conn.Write(datagram)
-		}
-		if err != nil {
-			return idx
-		}
-		idx = dge
-	}
-}
 
 // writeTCP writes a buffer to the connection
 // This buffer is prefixed with a 2 byte length specified with n
@@ -68,24 +35,34 @@ func writeTCP(w *bufio.Writer, buf []byte, n int) error {
 // tcpToUDP reads from the TCP reader r and writes packets to the udpc connection
 // The incoming TCP packets are encapsulated UDP packets with a 2 byte length prefix
 func tcpToUDP(r *bufio.Reader, udpc *net.UDPConn, wgaddr *net.UDPAddr) error {
-	var bufr [bufSize]byte
-	todo := 0
-	for {
-		n, rerr := r.Read(bufr[todo:])
-		if n > 0 {
-			todo += n
-			done := writeUDPChunks(udpc, bufr[:todo], wgaddr)
+	var hdr [hdrLength]byte
+	var b [bufSize]byte
 
-			// There is still data left to be written
-			// Copy to front
-			if todo > done {
-				diff := todo - done
-				copy(bufr[:diff], bufr[done:todo])
-			}
-			todo -= done
+	writefn := udpc.Write
+	if wgaddr != nil {
+		writefn = func(b []byte) (int, error) {
+			return udpc.WriteTo(b, wgaddr)
 		}
+	}
+	for {
+		_, rerr := io.ReadFull(r, hdr[:])
+		// we do not check the size here
+		// as if we can't even read the full header
+		// there is nothing left to do
 		if rerr != nil {
 			return rerr
+		}
+		glen := binary.BigEndian.Uint16(hdr[:])
+		n, rerr := io.ReadFull(r, b[:glen])
+		// we need a complete packet
+		if rerr != nil {
+			return rerr
+		}
+		if n > 0 {
+			_, werr := writefn(b[:n])
+			if werr != nil {
+				return werr
+			}
 		}
 	}
 }
