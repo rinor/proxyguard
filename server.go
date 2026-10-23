@@ -134,6 +134,9 @@ func Server(ctx context.Context, listen string, to string, logip bool) error {
 		ReadTimeout:  time.Second * 10,
 		WriteTimeout: time.Second * 10,
 	}
+	// only enable HTTP/1.0 and HTTP/1.1
+	s.Protocols = new(http.Protocols)
+	s.Protocols.SetHTTP1(true)
 
 	errc := make(chan error, 1)
 	log.Logf("ready and listening on %s", tcpaddr.String())
