@@ -3,11 +3,13 @@ package proxyguard
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -116,7 +118,7 @@ func (s tunnelServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // wgp is the WireGuard port
 // tcpp is the TCP listening port
 // to is the IP:PORT string
-func Server(ctx context.Context, listen string, to string, logip bool) error {
+func Server(ctx context.Context, listen string, to string, logip bool, credentialsDir string) error {
 	wgaddr, err := net.ResolveUDPAddr("udp", to)
 	if err != nil {
 		return err
@@ -133,6 +135,7 @@ func Server(ctx context.Context, listen string, to string, logip bool) error {
 		Handler:      tunnelServer{wgaddr: wgaddr, logip: logip},
 		ReadTimeout:  time.Second * 10,
 		WriteTimeout: time.Second * 10,
+		TLSConfig:    &tls.Config{MinVersion: tls.VersionTLS13},
 	}
 	// only enable HTTP/1.0 and HTTP/1.1
 	s.Protocols = new(http.Protocols)
@@ -141,6 +144,11 @@ func Server(ctx context.Context, listen string, to string, logip bool) error {
 	errc := make(chan error, 1)
 	log.Logf("ready and listening on %s", tcpaddr.String())
 	go func() {
+		if credentialsDir != "" {
+			errc <- s.ServeTLS(tcpconn, filepath.Join(credentialsDir, "fullchain.pem"), filepath.Join(credentialsDir, "privkey.pem"))
+
+			return
+		}
 		errc <- s.Serve(tcpconn)
 	}()
 	defer func() {

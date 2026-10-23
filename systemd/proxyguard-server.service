@@ -2,6 +2,9 @@
 Description=Proxy UDP traffic over TCP and HTTP(S)
 
 [Service]
+#Environment=LISTEN=:443
+#LoadCredential=fullchain.pem:/path/to/fullchain.pem
+#LoadCredential=privkey.pem:/path/to/privkey.pem
 Environment=LISTEN=127.0.0.1:51820
 Environment=TO=127.0.0.1:51820
 #Environment=OTHER_ARGS=-logip
@@ -10,10 +13,10 @@ Restart=on-failure
 ProtectSystem=strict
 PrivateDevices=yes
 PrivateTmp=yes
-PrivateUsers=yes
 ProtectHome=yes
 DynamicUser=yes
-CapabilityBoundingSet=
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
 SystemCallFilter=@system-service
 NoNewPrivileges=yes
 RestrictNamespaces=yes

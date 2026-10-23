@@ -65,7 +65,7 @@ func main() {
 		}
 	}()
 
-	err := proxyguard.Server(ctx, *listen, *to, *logip)
+	err := proxyguard.Server(ctx, *listen, *to, *logip, os.Getenv("CREDENTIALS_DIRECTORY"))
 	if err != nil {
 		select {
 		case <-ctx.Done():
