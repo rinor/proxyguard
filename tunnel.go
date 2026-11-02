@@ -128,18 +128,12 @@ func tunnel(ctx context.Context, udpc *net.UDPConn, brw *bufio.ReadWriter, wgadd
 	// read from udp and write to tcp buffer
 	go func() {
 		defer wg.Done()
-		err := udpToTCP(udpc, brw.Writer)
-		if err != nil {
-			errChan <- err
-		}
+		errChan <- udpToTCP(udpc, brw.Writer)
 	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := tcpToUDP(brw.Reader, udpc, wgaddr)
-		if err != nil {
-			errChan <- err
-		}
+		errChan <- tcpToUDP(brw.Reader, udpc, wgaddr)
 	}()
 	go func() {
 		wg.Wait()
