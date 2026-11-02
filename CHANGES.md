@@ -1,3 +1,9 @@
+# 2.2.0 (2026-11-02)
+- Server:
+  - Add support for TLS using systemd's CREDENTIALS_DIRECTORY env var
+  - Only accept HTTP/1.0 and HTTP/1.1 connections
+  - Remove systemd sysconfig file
+
 # 2.1.1 (2026-08-26)
 - Systemd Server: Allow specifying other args through environment file
 
