@@ -24,12 +24,11 @@ func writeTCP(w *bufio.Writer, buf []byte, n int) error {
 	// Put the header length at the front
 	binary.BigEndian.PutUint16(buf[:hdrLength], uint16(n))
 	// store the length and packet itself
-	_, werr := w.Write(buf)
-	flErr := w.Flush()
-	if flErr != nil {
-		log.Logf("failed flushing write buffer: %v", flErr)
+	_, err := w.Write(buf)
+	if err != nil {
+		return err
 	}
-	return werr
+	return w.Flush()
 }
 
 // tcpToUDP reads from the TCP reader r and writes packets to the udpc connection
