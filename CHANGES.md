@@ -1,3 +1,9 @@
+# 2.2.1 (2026-11-17)
+* Client/Server:
+  - Use io.ReadFull to write UDP packets to simplify the code
+    - This also fixes a case of high CPU usage
+  - Return an error if flush also does
+
 # 2.2.0 (2026-11-02)
 - Server:
   - Add support for TLS using systemd's CREDENTIALS_DIRECTORY env var
